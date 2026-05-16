@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+runs/
+*.pt
+*.pth
+.idea/
+.vscode/
+casino.db
+casino_games.log
+token.json

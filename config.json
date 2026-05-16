@@ -1,0 +1,33 @@
+{
+  "bot_settings": {
+    "prefix": "!",
+    "default_balance": 1000
+  },
+  "files": {
+    "database": "casino.db",
+    "log_file": "casino_games.log"
+  },
+  "slots_settings": {
+    "default_bet": 10,
+    "multiplier": 1.5,
+    "win_rate": 0.2,
+    "multi_win_rate": 0.2,
+    "bonus_win_rate": 0.2
+  },
+  "roulette_settings": {
+    "default_bet": 10,
+    "win_rate": 0.2
+  },
+  "payments": {
+    "expiry_time_token": 15
+  },
+  "random_queue": {
+    "enabled": true,
+    "rabbitmq_url": "amqp://guest:guest@127.0.0.1:5672/",
+    "queue_name": "casino_random_numbers",
+    "batch_size": 30,
+    "min_value": 1,
+    "max_value": 1000,
+    "api_url": "https://www.random.org/integers/?num={count}&min={min_value}&max={max_value}&col=1&base=10&format=plain&rnd=new"
+  }
+}
