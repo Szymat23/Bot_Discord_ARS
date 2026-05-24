@@ -3,28 +3,38 @@
     "prefix": "!",
     "default_balance": 1000
   },
+  "economy_settings": {
+    "currency_name": "respekt",
+    "currency_name_genitive": "respektu",
+    "currency_icon": "⭐"
+  },
   "files": {
-    "database": "casino.db",
-    "log_file": "casino_games.log"
+    "database": "economy.db",
+    "log_file": "economy_bot.log"
   },
-  "slots_settings": {
-    "default_bet": 10,
+  "drawing_settings": {
+    "default_entry_cost": 10,
     "multiplier": 1.5,
-    "win_rate": 0.2,
-    "multi_win_rate": 0.2,
-    "bonus_win_rate": 0.2
+    "success_rate": 0.2,
+    "multi_success_rate": 0.2,
+    "bonus_success_rate": 0.2
   },
-  "roulette_settings": {
-    "default_bet": 10,
-    "win_rate": 0.2
+  "colors_settings": {
+    "default_entry_cost": 10,
+    "success_rate": 0.2
   },
-  "payments": {
-    "expiry_time_token": 15
+  "topup_settings": {
+    "expiry_time_token": 15,
+    "mute_enabled": true,
+    "mute_points_unit": 100,
+    "mute_seconds_per_unit": 30,
+    "guild_id": 688027757434896468,
+    "reason": "Doładowanie respektu przez panel ekonomii"
   },
   "random_queue": {
     "enabled": true,
     "rabbitmq_url": "amqp://guest:guest@127.0.0.1:5672/",
-    "queue_name": "casino_random_numbers",
+    "queue_name": "economy_random_numbers",
     "batch_size": 30,
     "min_value": 1,
     "max_value": 1000,

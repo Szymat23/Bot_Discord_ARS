@@ -12,7 +12,7 @@ try:
 except ImportError:  # zabezpieczenie, gdy ktoś nie zainstalował requirements.txt
     aio_pika = None
 
-logger = logging.getLogger("CasinoBot")
+logger = logging.getLogger("EconomyBot")
 
 
 class RandomQueueService:
@@ -21,7 +21,7 @@ class RandomQueueService:
 
         self.enabled = queue_config.get("enabled", True)
         self.rabbitmq_url = queue_config.get("rabbitmq_url", "amqp://guest:guest@localhost/")
-        self.queue_name = queue_config.get("queue_name", "casino_random_numbers")
+        self.queue_name = queue_config.get("queue_name", "economy_random_numbers")
         self.batch_size = int(queue_config.get("batch_size", 30))
         self.min_value = int(queue_config.get("min_value", 1))
         self.max_value = int(queue_config.get("max_value", 1000))

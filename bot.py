@@ -49,24 +49,29 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger("CasinoBot")
+logger = logging.getLogger("EconomyBot")
 
-class CasinoBot(commands.Bot):
+
+class EconomyBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True
         super().__init__(command_prefix=config["bot_settings"]["prefix"], intents=intents)
         self.config = config
-        self.default_bet = config["slots_settings"]["default_bet"]
+        self.currency_name = config.get("economy_settings", {}).get("currency_name", "respekt")
+        self.currency_name_genitive = config.get("economy_settings", {}).get("currency_name_genitive", "respektu")
+        self.currency_icon = config.get("economy_settings", {}).get("currency_icon", "⭐")
+        self.default_entry_cost = config["drawing_settings"]["default_entry_cost"]
         self.db = None
         self.random_queue = None
 
     async def load_cogs(self) -> None:
         cogs = [
-            "cogs.casino_cog",
-            "cogs.slots_cog",
-            "cogs.roulette_cog",
-            "cogs.blackjack_cog",
+            "cogs.economy_cog",
+            "cogs.drawing_cog",
+            "cogs.colors_cog",
+            "cogs.cards_cog",
         ]
 
         for cog_path in cogs:
@@ -78,12 +83,12 @@ class CasinoBot(commands.Bot):
 
     async def sync_commands(self) -> None:
         try:
-            logger.info("Syncing command tree...")
+            logger.info("Synchronizacja komend...")
             await self.tree.sync()
-            logger.info("Command tree synced.")
-            logger.info("Registered commands: %s", [c.name for c in self.tree.walk_commands()])
+            logger.info("Komendy zsynchronizowane.")
+            logger.info("Dostępne komendy: %s", [c.name for c in self.tree.walk_commands()])
         except Exception as exc:
-            logger.exception("Nie udało się zsynchronizować command tree: %s", exc)
+            logger.exception("Nie udało się zsynchronizować komend: %s", exc)
 
     async def setup_hook(self):
         from services.database import DatabaseHandler
@@ -97,16 +102,15 @@ class CasinoBot(commands.Bot):
         await self.random_queue.connect()
 
         if run_server:
-            flask_thread = threading.Thread(target=run_server, args=(self.db,), daemon=True)
+            flask_thread = threading.Thread(target=run_server, args=(self.db, self.config, self), daemon=True)
             flask_thread.start()
-            logger.info("Serwer WWW uruchomiony na porcie 5000.")
+            logger.info("Panel WWW uruchomiony na porcie 5000.")
         else:
-            logger.warning("Serwer WWW nie został uruchomiony (brak lub problem z modułem web_panel).")
+            logger.warning("Panel WWW nie został uruchomiony.")
 
         await self.load_cogs()
         self.tree.on_error = self.on_app_command_error
         await self.sync_commands()
-
 
     async def send_bot_error_message(self, target, text: str, ephemeral: bool = False):
         view = CardView(f"### ❌ Komunikat\n\n{text}", discord.Color.red())
@@ -123,24 +127,20 @@ class CasinoBot(commands.Bot):
         if isinstance(error, commands.CommandNotFound):
             await self.send_bot_error_message(
                 ctx,
-                f"Taka komenda nie istnieje: `{ctx.message.content}`.\nUżyj `/help`, aby zobaczyć dostępne komendy."
+                f"Taka komenda nie istnieje: `{ctx.message.content}`.\nUżyj `/pomoc`, aby zobaczyć dostępne komendy."
             )
             return
 
         logger.exception("Błąd komendy tekstowej: %s", error)
-        await self.send_bot_error_message(
-            ctx,
-            "Wystąpił błąd podczas wykonywania komendy."
-        )
+        await self.send_bot_error_message(ctx, "Wystąpił błąd podczas wykonywania komendy.")
 
     async def on_app_command_error(self, interaction: discord.Interaction, error: Exception) -> None:
         logger.exception("Błąd komendy slash: %s", error)
         await self.send_bot_error_message(
             interaction,
-            "Wystąpił błąd podczas wykonywania komendy slash. Sprawdź dane i spróbuj ponownie.",
+            "Wystąpił błąd podczas wykonywania komendy. Sprawdź dane i spróbuj ponownie.",
             ephemeral=True
         )
-
 
     async def close(self) -> None:
         if self.random_queue:
@@ -151,9 +151,10 @@ class CasinoBot(commands.Bot):
         if not getattr(self, "_commands_synced", False):
             await self.sync_commands()
             self._commands_synced = True
-        logger.info("%s Bot is ready. %s", "=" * 20, "=" * 20)
+        logger.info("%s Bot jest gotowy. %s", "=" * 20, "=" * 20)
 
-bot = CasinoBot()
+
+bot = EconomyBot()
 
 if __name__ == "__main__":
     bot.run(BOT_TOKEN)

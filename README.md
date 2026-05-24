@@ -1,22 +1,25 @@
-# Bot kasynowy Discord
+# Bot ekonomii serwera Discord
 
-Bot kasynowy napisany w Pythonie z użyciem biblioteki `discord.py`. Projekt obsługuje gry kasynowe, saldo użytkownika, historię gier, statystyki, przelewy monet, doładowania oraz losowanie liczb przez kolejkę RabbitMQ.
+Projekt jest botem ekonomii serwera napisanym w Pythonie z użyciem biblioteki `discord.py`. Bot obsługuje konto użytkownika, historię aktywności, statystyki, przekazywanie respektu, doładowania oraz proste gry losowe. Liczby losowe mogą być pobierane przez kolejkę RabbitMQ.
 
-Interfejs wiadomości został wykonany za pomocą `discord.ui.LayoutView`, `discord.ui.Container`, `discord.ui.TextDisplay`, `discord.ui.Separator` oraz `discord.ui.ActionRow`. Dzięki temu wiadomości wyglądają podobnie do embedów, ale nie są klasycznymi `discord.Embed`.
+Interfejs wiadomości został wykonany za pomocą `discord.ui.LayoutView`, `discord.ui.Container`, `discord.ui.TextDisplay`, `discord.ui.Separator` oraz `discord.ui.ActionRow`. Dzięki temu wiadomości są czytelne i dobrze wyglądają na Discordzie.
 
 ## Funkcje projektu
 
 - obsługa komend slash Discorda,
-- system salda użytkowników,
+- system kont użytkowników,
+- punkty ekonomii serwera nazwane `respekt`,
 - zapis danych w bazie SQLite,
-- historia ostatnich gier,
-- statystyki gracza,
-- przelewanie monet między graczami,
-- doładowanie konta,
-- gra w sloty,
-- gra w multi sloty,
-- gra w ruletkę,
-- gra w blackjacka,
+- historia ostatnich aktywności,
+- statystyki użytkownika,
+- przekazywanie respektu między użytkownikami,
+- doładowanie konta przez panel WWW,
+- 6-cyfrowy kod wysyłany użytkownikowi w wiadomości prywatnej na Discordzie,
+- konfigurowalne wyciszenie użytkownika po doładowaniu,
+- gra `losowanie`,
+- gra `multi_losowanie`,
+- gra `kolory`,
+- gra `karty`,
 - pobieranie liczb losowych przez RabbitMQ,
 - pobieranie paczek liczb z zewnętrznego API,
 - osobny plik z tokenem bota,
@@ -42,26 +45,24 @@ Projekt wykorzystuje:
 Bot/
 ├── bot.py
 ├── config.json
-├── config.example.json
 ├── token.json
-├── token.example.json
 ├── requirements.txt
 ├── cogs/
-│   ├── blackjack_cog.py
-│   ├── casino_cog.py
-│   ├── roulette_cog.py
-│   └── slots_cog.py
+│   ├── cards_cog.py
+│   ├── colors_cog.py
+│   ├── drawing_cog.py
+│   └── economy_cog.py
 ├── games/
-│   ├── blackjack.py
-│   ├── roulette.py
-│   └── slot_machine.py
+│   ├── cards_game.py
+│   ├── colors_game.py
+│   └── drawing_game.py
 ├── services/
 │   ├── database.py
 │   ├── random_queue.py
 │   └── web_panel.py
 └── views/
     ├── card_view.py
-    ├── pay_view.py
+    ├── transfer_view.py
     └── stats_view.py
 ```
 
@@ -114,7 +115,7 @@ oraz:
 token.json
 ```
 
-Plik `config.json` przechowuje zwykłe ustawienia bota, na przykład domyślne saldo, stawki, szanse na wygraną, ustawienia bazy danych i RabbitMQ.
+Plik `config.json` przechowuje ustawienia bota, na przykład początkowy stan konta, nazwę punktów ekonomii, koszt rund, ustawienia bazy danych, ustawienia doładowania i RabbitMQ.
 
 Przykład:
 
@@ -124,28 +125,38 @@ Przykład:
     "prefix": "!",
     "default_balance": 1000
   },
+  "economy_settings": {
+    "currency_name": "respekt",
+    "currency_name_genitive": "respektu",
+    "currency_icon": "⭐"
+  },
   "files": {
-    "database": "casino.db",
-    "log_file": "casino_games.log"
+    "database": "economy.db",
+    "log_file": "economy_bot.log"
   },
-  "slots_settings": {
-    "default_bet": 10,
+  "drawing_settings": {
+    "default_entry_cost": 10,
     "multiplier": 1.5,
-    "win_rate": 0.2,
-    "multi_win_rate": 0.2,
-    "bonus_win_rate": 0.2
+    "success_rate": 0.2,
+    "multi_success_rate": 0.2,
+    "bonus_success_rate": 0.2
   },
-  "roulette_settings": {
-    "default_bet": 10,
-    "win_rate": 0.2
+  "colors_settings": {
+    "default_entry_cost": 10,
+    "success_rate": 0.2
   },
-  "payments": {
-    "expiry_time_token": 15
+  "topup_settings": {
+    "expiry_time_token": 15,
+    "mute_enabled": true,
+    "mute_points_unit": 100,
+    "mute_seconds_per_unit": 30,
+    "guild_id": 0,
+    "reason": "Doładowanie respektu przez panel ekonomii"
   },
   "random_queue": {
     "enabled": true,
     "rabbitmq_url": "amqp://guest:guest@127.0.0.1:5672/",
-    "queue_name": "casino_random_numbers",
+    "queue_name": "economy_random_numbers",
     "batch_size": 30,
     "min_value": 1,
     "max_value": 1000,
@@ -153,6 +164,17 @@ Przykład:
   }
 }
 ```
+
+W sekcji `topup_settings` można ustawić przelicznik wyciszenia po doładowaniu:
+
+```json
+"mute_enabled": true,
+"mute_points_unit": 100,
+"mute_seconds_per_unit": 30,
+"guild_id": 0
+```
+
+Przy takim ustawieniu każde 100 respektu daje 30 sekund wyciszenia. Przykładowo 1000 respektu daje 300 sekund, czyli 5 minut. W polu `guild_id` trzeba wpisać ID serwera Discord. Jeżeli zostanie `0`, bot doda respekt, ale nie będzie miał konkretnego serwera do nadania wyciszenia.
 
 Plik `token.json` przechowuje tylko token bota Discord.
 
@@ -166,10 +188,10 @@ Token nie powinien być wrzucany na GitHuba. Z tego powodu plik `token.json` pow
 
 ## Uruchomienie RabbitMQ
 
-Do losowania liczb używana jest kolejka RabbitMQ. Najprościej uruchomić ją przez Dockera.
+Do pobierania liczb losowych używana jest kolejka RabbitMQ. Najprościej uruchomić ją przez Dockera.
 
 ```bash
-docker run -d --name rabbitmq-casino -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+docker run -d --name rabbitmq-economy -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ```
 
 Panel RabbitMQ będzie dostępny pod adresem:
@@ -188,12 +210,12 @@ hasło: guest
 Kolejka z liczbami powinna mieć nazwę:
 
 ```text
-casino_random_numbers
+economy_random_numbers
 ```
 
 ## Jak działa losowanie liczb
 
-Losowanie liczb działa przez RabbitMQ. Bot nie musi pobierać każdej liczby osobno bezpośrednio w grze. Zamiast tego pobiera paczkę liczb z API i zapisuje je w kolejce.
+Losowanie liczb działa przez RabbitMQ. Bot nie musi pobierać każdej liczby osobno bezpośrednio w rundzie. Zamiast tego pobiera paczkę liczb z API i zapisuje je w kolejce.
 
 Schemat działania:
 
@@ -204,12 +226,12 @@ paczka 30 liczb
       ↓
 RabbitMQ
       ↓
-gry: sloty, ruletka, blackjack
+gry: losowanie, multi_losowanie, kolory, karty
 ```
 
 Gdy gra potrzebuje liczby losowej, pobiera ją z kolejki. Jeśli kolejka jest pusta, bot pobiera kolejną paczkę liczb z API i uzupełnia kolejkę.
 
-Jeżeli RabbitMQ albo API chwilowo nie działa, bot korzysta z awaryjnego losowania lokalnego, żeby gra nie przerwała działania.
+Jeżeli RabbitMQ albo API chwilowo nie działa, bot korzysta z awaryjnego losowania lokalnego, żeby runda mogła zostać dokończona.
 
 ## Uruchomienie bota
 
@@ -227,55 +249,55 @@ Bot obsługuje następujące komendy slash:
 
 | Komenda | Opis |
 |---|---|
-| `/balance` | Pokazuje aktualne saldo użytkownika. |
-| `/historia` | Pokazuje ostatnie gry użytkownika. |
-| `/stats` | Pokazuje statystyki gracza. |
-| `/pay` | Pozwala przelać monety innemu graczowi. |
+| `/konto` | Pokazuje aktualny stan konta użytkownika. |
+| `/historia` | Pokazuje ostatnie aktywności użytkownika. |
+| `/statystyki` | Pokazuje statystyki użytkownika. |
+| `/przelej` | Pozwala przekazać respekt innemu użytkownikowi. |
 | `/doladuj` | Doładowuje konto użytkownika. |
-| `/help` | Pokazuje listę komend. |
-| `/slots` | Uruchamia automat do gry. |
-| `/multi_slots` | Uruchamia kilka automatów obok siebie. |
-| `/ruletka` | Uruchamia ruletkę z wyborem koloru. |
-| `/blackjack` | Uruchamia grę w blackjacka. |
+| `/pomoc` | Pokazuje listę komend. |
+| `/losowanie` | Uruchamia klasyczne losowanie. |
+| `/multi_losowanie` | Uruchamia kilka losowań obok siebie. |
+| `/kolory` | Uruchamia grę z wyborem koloru. |
+| `/karty` | Uruchamia grę w karty. |
 
-## Gry
+## Gry losowe
 
-### Sloty
+### Losowanie
 
-Gra polega na wylosowaniu symboli na automacie. Stawka jest odejmowana na początku gry, a ewentualna wygrana jest dodawana po zakończeniu rundy.
+Gra polega na wylosowaniu symboli. Koszt rundy jest odejmowany na początku, a ewentualna nagroda jest dodawana po zakończeniu rundy.
 
-### Multi sloty
+### Multi losowanie
 
-Tryb multi slotów uruchamia kilka automatów jednocześnie. Wynik zależy od wylosowanych symboli oraz ustawień z pliku `config.json`.
+Tryb `multi_losowanie` uruchamia kilka losowań jednocześnie. Wynik zależy od wylosowanych symboli oraz ustawień z pliku `config.json`.
 
-### Ruletka
+### Kolory
 
-Ruletka pozwala wybrać kolor, na który gracz chce postawić monety. Dostępne są przyciski wyboru koloru. Wynik jest wyświetlany w widoku wykonanym przy pomocy komponentów Discorda.
+Gra `kolory` pozwala wybrać kolor: czerwony, czarny albo zielony. Wynik jest wyświetlany w widoku wykonanym przy pomocy komponentów Discorda.
 
-### Blackjack
+### Karty
 
-Blackjack pozwala grać przeciwko krupierowi. Gracz może dobierać karty albo zatrzymać aktualną rękę. Karty są wybierane na podstawie liczb pobieranych z kolejki RabbitMQ.
+Gra `karty` pozwala grać przeciwko botowi. Użytkownik może dobierać karty albo zostać przy aktualnym wyniku. Karty są wybierane na podstawie liczb pobieranych z kolejki RabbitMQ.
 
 ## Baza danych
 
 Projekt używa bazy SQLite. Domyślna nazwa pliku bazy to:
 
 ```text
-casino.db
+economy.db
 ```
 
 W bazie przechowywane są między innymi:
 
-- saldo graczy,
-- historia gier,
-- statystyki gier,
-- informacje potrzebne do działania systemu kasyna.
+- stan kont użytkowników,
+- historia aktywności,
+- statystyki aktywności,
+- kody potrzebne do doładowania konta.
 
-Szanse na wygraną nie są przechowywane w bazie danych. Są pobierane z pliku `config.json`.
+Ustawienia szans i kosztów są pobierane z pliku `config.json`.
 
 ## Panel WWW
 
-Projekt zawiera prosty panel WWW oparty o Flask. Panel jest uruchamiany razem z botem, jeśli moduł `services/web_panel.py` jest dostępny.
+Projekt zawiera prosty panel WWW oparty o Flask. Panel jest uruchamiany razem z botem, jeśli plik `services/web_panel.py` jest dostępny.
 
 Domyślnie panel działa lokalnie na porcie:
 
@@ -289,6 +311,8 @@ Adres lokalny:
 http://localhost:5000
 ```
 
+Po użyciu komendy `/doladuj` bot generuje link i wysyła użytkownikowi 6-cyfrowy kod w wiadomości prywatnej. Kod trzeba przepisać w panelu WWW. Po zatwierdzeniu użytkownik dostaje wpisaną ilość respektu. Jeżeli w `config.json` włączono `mute_enabled`, bot wylicza czas wyciszenia z przelicznika `mute_points_unit` i `mute_seconds_per_unit`.
+
 ## Pliki, których nie należy wrzucać na GitHuba
 
 Na GitHuba nie powinno się wrzucać plików zawierających dane prywatne albo plików generowanych automatycznie.
@@ -301,8 +325,8 @@ __pycache__/
 venv/
 .env
 token.json
-casino.db
-casino_games.log
+economy.db
+economy_bot.log
 ```
 
 Najważniejsze jest to, żeby nie publikować pliku `token.json`, ponieważ zawiera token bota Discord.
@@ -334,6 +358,10 @@ Sprawdź też, czy w `token.json` jest prawdziwy token bota.
 
 Po pierwszym uruchomieniu synchronizacja komend może chwilę potrwać. Warto też sprawdzić, czy bot został zaproszony na serwer z odpowiednimi uprawnieniami.
 
+### Wyciszenie po doładowaniu nie działa
+
+Sprawdź, czy w `config.json` ustawiono prawidłowe `guild_id`. Bot musi być na tym serwerze i musi mieć uprawnienie do wyciszania użytkowników.
+
 ### Błąd z bibliotekami
 
 Zainstaluj ponownie zależności.
@@ -344,4 +372,4 @@ pip install -r requirements.txt
 
 ## Autor
 
-Projekt wykonany jako bot kasynowy Discord z obsługą gier, salda, statystyk oraz kolejki RabbitMQ do pobierania liczb losowych.
+Projekt wykonany jako bot ekonomii serwera Discord z obsługą gier losowych, kont użytkowników, statystyk oraz kolejki RabbitMQ do pobierania liczb losowych.
