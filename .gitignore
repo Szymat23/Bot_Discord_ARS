@@ -3,5 +3,7 @@ __pycache__/
 venv/
 .env
 token.json
+config.json
 economy.db
 economy_bot.log
+
